@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import Button from "@/components/Translate_Button";
+import Header from "@/components/Header";
 import { useState } from "react";
 import WebcamScreen from "@/components/WebcamScreen";
 import type { CameraStatus } from "@/components/WebcamScreen";
@@ -23,7 +24,7 @@ const Translate_Sign = () => {
 
   return (
     <Main voiceMode={!change}>
-      <p>헤더 들어갈 자리</p>
+      <Header></Header>
       <Change_mode voiceMode={!change}>
         <Mic_mode
           onClick={() => {

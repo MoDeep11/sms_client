@@ -136,7 +136,7 @@ export default function MicrophoneScreen({ onStatusChange }: MicrophoneScreenPro
 
     void connect().catch((error: unknown) => {
       fail(error instanceof Error && error.message === 'unsupported'
-        ? '마이크를 지원하는 브라우저에서 HTTPS 또는 localhost 주소로 접속해 주세요.'
+        ? '마이크를 지원하는 브라우저에서 접속해 주세요.'
         : microphoneErrorMessage(error))
     })
 
