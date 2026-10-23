@@ -1,4 +1,4 @@
-import { Client, type IMessage } from "@stomp/stompjs";
+import { Client, Versions, type IMessage } from "@stomp/stompjs";
 import type { TranslationMode, TranslationResponse } from "./websocket.types";
 
 const WS_BASE_URL = import.meta.env.VITE_TRANSLATION_WS_URL;
@@ -22,13 +22,25 @@ export function connectTranslation({
 
   brokerURL.searchParams.set("mode", mode);
 
+  let reported = false;
+  const report = (message: string) => {
+    if (reported) return;
+
+    reported = true;
+    onError?.(message);
+  };
+
   const client = new Client({
     brokerURL: brokerURL.toString(),
+    stompVersions: new Versions([Versions.V1_2]),
+    connectionTimeout: 10000,
     reconnectDelay: 5000,
     splitLargeFrames: true,
     maxWebSocketChunkSize: 16 * 1024,
 
     onConnect: () => {
+      reported = false;
+
       client.subscribe("/user/queue/translations", (message: IMessage) => {
         try {
           const response: TranslationResponse = JSON.parse(message.body);
@@ -49,11 +61,17 @@ export function connectTranslation({
     },
 
     onStompError: (frame) => {
-      onError?.(frame.headers["message"] ?? "STOMP 오류가 발생했습니다.");
+      report(frame.headers["message"] ?? "STOMP 오류가 발생했습니다.");
     },
 
     onWebSocketError: () => {
-      onError?.("WebSocket 연결 오류가 발생했습니다.");
+      report("WebSocket 연결 오류가 발생했습니다.");
+    },
+
+    onWebSocketClose: () => {
+      if (!client.active) return;
+
+      report("WebSocket 연결이 끊어졌습니다. 재연결을 시도합니다.");
     },
   });
 
