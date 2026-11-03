@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { Link } from "react-router-dom";
 import Talking from "@/assets/Main/Talking.svg";
 import Hand from "@/assets/Main/Hand.svg";
 
@@ -6,26 +7,28 @@ const IMAGES = { Talking, Hand };
 
 interface ChoiceBoxProps {
   before: "수어" | "음성";
-  after: "수어" | "음성";
+  after: "텍스트";
   img: "Talking" | "Hand";
 }
 
 export default function ChoiceBox({ before, after, img }: ChoiceBoxProps) {
   return (
-    <Wrapper>
+    <Wrapper to={`/Translate?mode=${before === "수어" ? "sign" : "voice"}`}>
       <Change>
         {before} - {after}
       </Change>
       <img src={IMAGES[img]} alt="" />
       <Title>{before === "수어" ? "수어로" : "음성으로"} 말하기</Title>
       <English>
-        {before == "수어" ? "Sign to Speech" : "Speech to Sign"}{" "}
+        {before == "수어" ? "Sign to Text" : "Speech to Text"}{" "}
       </English>
     </Wrapper>
   );
 }
 
-const Wrapper = styled.div`
+const Wrapper = styled(Link)`
+  color: inherit;
+  text-decoration: none;
   display: flex;
   padding: 36px 0;
   width: 320px;

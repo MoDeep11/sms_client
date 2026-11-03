@@ -290,7 +290,11 @@ export function useSpeechToText(enabled: boolean) {
 
     if (!client || lastSequence < 1) return;
 
-    sendCommit(client, requestIdRef.current, lastSequence);
+    try {
+      sendCommit(client, requestIdRef.current, lastSequence);
+    } catch {
+      setErrorMessage("연결이 끊겨 전송하지 못했습니다.");
+    }
   }, [stopCapture]);
 
   return {

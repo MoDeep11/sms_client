@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import styled from '@emotion/styled'
 
 export type CameraStatus = 'requesting' | 'ready' | 'error'
 
 type WebcamScreenProps = {
   onStatusChange: (status: CameraStatus) => void
+  captureRef?: RefObject<HTMLVideoElement | null>
 }
 
 function cameraErrorMessage(error: unknown) {
@@ -23,8 +25,9 @@ function cameraErrorMessage(error: unknown) {
   return '카메라 영상을 표시할 수 없습니다. 카메라 연결과 브라우저 설정을 확인해 주세요.'
 }
 
-export default function WebcamScreen({ onStatusChange }: WebcamScreenProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
+export default function WebcamScreen({ onStatusChange, captureRef }: WebcamScreenProps) {
+  const internalRef = useRef<HTMLVideoElement>(null)
+  const videoRef = captureRef ?? internalRef
   const [attempt, setAttempt] = useState(0)
   const [status, setStatus] = useState<CameraStatus>('requesting')
   const [message, setMessage] = useState('카메라 연결 중입니다. 권한 요청이 표시되면 허용해 주세요.')
@@ -84,7 +87,7 @@ export default function WebcamScreen({ onStatusChange }: WebcamScreenProps) {
       disposed = true
       release()
     }
-  }, [attempt, onStatusChange])
+  }, [attempt, onStatusChange, videoRef])
 
   return (
     <Screen>
