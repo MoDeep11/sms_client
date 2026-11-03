@@ -49,7 +49,9 @@ const Translate_Sign = () => {
     socketReady: speech.ready,
     deviceText,
   });
-  const readyBadge = voiceMode ? deviceReady && speech.ready : deviceReady;
+  const readyBadge = voiceMode
+    ? deviceReady && speech.ready && !speech.errorMessage
+    : deviceReady;
 
   return (
     <Main voiceMode={!change}>
@@ -83,10 +85,11 @@ const Translate_Sign = () => {
       </Webcam_screen>
       <Translate_container voiceMode={!change}>
         <Translate_box>
-          <Translate_KR>
+          <Translate_KR aria-live="polite" aria-atomic="true">
             {change
               ? "이것은 한국어 입니다."
               : speech.finalText ||
+                speech.fallbackMessage ||
                 speech.partialText ||
                 "말하기를 시작해 주세요."}
           </Translate_KR>
@@ -97,7 +100,7 @@ const Translate_Sign = () => {
                 <Button key={word}>{word}</Button>
               ))
             ) : speech.recording ? (
-              <Button onClick={speech.commit}>말하기 완료</Button>
+              <Button onClick={() => void speech.commit()}>말하기 완료</Button>
             ) : (
               <Button
                 onClick={() => void speech.start()}
