@@ -6,21 +6,50 @@ import WebcamScreen from "@/components/WebcamScreen";
 import type { CameraStatus } from "@/components/WebcamScreen";
 import MicrophoneScreen from "@/components/MicrophoneScreen";
 import type { MicrophoneStatus } from "@/components/MicrophoneScreen";
+import { useSpeechToText } from "@/hooks/useSpeechToText";
+
+function deviceStatusText(
+  deviceName: string,
+  status: CameraStatus | MicrophoneStatus,
+) {
+  if (status === "ready") return `${deviceName} 준비 완료`;
+  if (status === "error") return `${deviceName} 연결 확인 필요`;
+  if (status === "muted") return "마이크 입력 일시 중단";
+  return `${deviceName} 연결 중`;
+}
+
+function badgeText(args: {
+  voiceMode: boolean;
+  socketError: string;
+  socketReady: boolean;
+  deviceText: string;
+}) {
+  const { voiceMode, socketError, socketReady, deviceText } = args;
+
+  if (!voiceMode) return deviceText;
+  if (socketError) return socketError;
+  if (!socketReady) return "서버 연결 중";
+  return deviceText;
+}
 
 const Translate_Sign = () => {
   const [change, setChange] = useState(true);
-  const [cameraStatus, setCameraStatus] = useState<CameraStatus>('requesting');
-  const [microphoneStatus, setMicrophoneStatus] = useState<MicrophoneStatus>('requesting');
+  const [cameraStatus, setCameraStatus] = useState<CameraStatus>("requesting");
+  const [microphoneStatus, setMicrophoneStatus] =
+    useState<MicrophoneStatus>("requesting");
+  const voiceMode = !change;
+  const speech = useSpeechToText(voiceMode);
   const activeStatus = change ? cameraStatus : microphoneStatus;
-  const deviceName = change ? '카메라' : '마이크';
-  const deviceReady = activeStatus === 'ready';
-  const statusText = activeStatus === 'ready'
-    ? `${deviceName} 준비 완료`
-    : activeStatus === 'error'
-      ? `${deviceName} 연결 확인 필요`
-      : activeStatus === 'muted'
-        ? '마이크 입력 일시 중단'
-        : `${deviceName} 연결 중`;
+  const deviceName = change ? "카메라" : "마이크";
+  const deviceReady = activeStatus === "ready";
+  const deviceText = deviceStatusText(deviceName, activeStatus);
+  const statusText = badgeText({
+    voiceMode,
+    socketError: speech.errorMessage,
+    socketReady: speech.ready,
+    deviceText,
+  });
+  const readyBadge = voiceMode ? deviceReady && speech.ready : deviceReady;
 
   return (
     <Main voiceMode={!change}>
@@ -28,7 +57,7 @@ const Translate_Sign = () => {
       <Change_mode voiceMode={!change}>
         <Mic_mode
           onClick={() => {
-            if (change) setMicrophoneStatus('requesting');
+            if (change) setMicrophoneStatus("requesting");
             setChange(false);
           }}
           change={change}
@@ -37,7 +66,7 @@ const Translate_Sign = () => {
         </Mic_mode>
         <Webcam_mode
           onClick={() => {
-            if (!change) setCameraStatus('requesting');
+            if (!change) setCameraStatus("requesting");
             setChange(true);
           }}
           change={change}
@@ -54,16 +83,32 @@ const Translate_Sign = () => {
       </Webcam_screen>
       <Translate_container voiceMode={!change}>
         <Translate_box>
-          <Translate_KR>{change ? '이것은 한국어 입니다.' : '언제부터 아프기 시작했나요?'}</Translate_KR>
-          <Translate_EN>{change ? 'This is English' : 'When did it start hurting?'}</Translate_EN>
+          <Translate_KR>
+            {change
+              ? "이것은 한국어 입니다."
+              : speech.finalText ||
+                speech.partialText ||
+                "말하기를 시작해 주세요."}
+          </Translate_KR>
+          <Translate_EN>{change ? "This is English" : ""}</Translate_EN>
           <Translate_wordbox>
-            {(change ? ['이것', '은(는)', '한국어', '이다'] : ['언제', '아프다', '시작하다']).map((word) => (
-              <Button key={word} onClick={() => console.log("클릭")}>{word}</Button>
-            ))}
-
+            {change ? (
+              ["이것", "은(는)", "한국어", "이다"].map((word) => (
+                <Button key={word}>{word}</Button>
+              ))
+            ) : speech.recording ? (
+              <Button onClick={speech.commit}>말하기 완료</Button>
+            ) : (
+              <Button
+                onClick={() => void speech.start()}
+                disabled={!speech.ready || !deviceReady}
+              >
+                말하기 시작
+              </Button>
+            )}
           </Translate_wordbox>
         </Translate_box>
-        <Ready_button ready={deviceReady} role="status" aria-live="polite">
+        <Ready_button ready={readyBadge} role="status" aria-live="polite">
           <Ready_dot></Ready_dot>
           <Ready_text>{statusText}</Ready_text>
         </Ready_button>
@@ -80,7 +125,9 @@ const Main = styled.div<{ voiceMode: boolean }>`
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  ${({ voiceMode }) => voiceMode && `
+  ${({ voiceMode }) =>
+    voiceMode &&
+    `
     display: flex;
     flex-direction: column;
     min-height: 640px;
@@ -89,7 +136,6 @@ const Main = styled.div<{ voiceMode: boolean }>`
     > p { flex-shrink: 0; }
   `}
   p {
-    // 이거는 헤더가 대체할 자리입니다.
     margin: 0;
     height: 56px;
     background-color: antiquewhite;
@@ -100,7 +146,9 @@ const Change_mode = styled.div<{ voiceMode: boolean }>`
   z-index: 1;
   top: 88px;
   left: 36px;
-  ${({ voiceMode }) => voiceMode && `
+  ${({ voiceMode }) =>
+    voiceMode &&
+    `
     border: 1px solid #21406a;
     max-width: calc(100% - 32px);
     left: clamp(16px, 2.6vw, 36px);
@@ -145,7 +193,9 @@ const Webcam_screen = styled.div<{ voiceMode: boolean }>`
   width: 100%;
   height: 66%;
   background-color: #111827;
-  ${({ voiceMode }) => voiceMode && `
+  ${({ voiceMode }) =>
+    voiceMode &&
+    `
     flex: 1;
     min-height: 300px;
     height: auto;
@@ -156,7 +206,9 @@ const Translate_container = styled.div<{ voiceMode: boolean }>`
   width: 100%;
   height: 28%;
   padding: 32px 388px;
-  ${({ voiceMode }) => voiceMode && `
+  ${({ voiceMode }) =>
+    voiceMode &&
+    `
     flex-shrink: 0;
     height: 30%;
     min-height: 240px;
@@ -194,8 +246,8 @@ const Ready_button = styled.div<{ ready: boolean }>`
   display: flex;
   align-items: center;
   gap: 10px;
-  background-color: ${({ ready }) => ready ? '#20af6133' : '#f1f5f9'};
-  color: ${({ ready }) => ready ? '#167c45' : '#475569'};
+  background-color: ${({ ready }) => (ready ? "#20af6133" : "#f1f5f9")};
+  color: ${({ ready }) => (ready ? "#167c45" : "#475569")};
   border: 1px solid currentColor;
   border-radius: 99px;
   padding: 6px 20px;
