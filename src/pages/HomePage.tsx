@@ -2,27 +2,22 @@ import styled from "@emotion/styled";
 import Header from "@/components/Header";
 import ChoiceBoxList from "@/components/homePage/ChoiceBoxList";
 import IsReady from "@/components/homePage/IsReady";
-import NotFoundPage from "@/pages/NotFoundPage";
 
 export default function HomePage() {
-  try {
-    return (
-      <Page>
-        <HeaderSlot>
-          <Header />
-        </HeaderSlot>
-        <Center>
-          <Title>통역을 시작할 방법을 선택해 주세요</Title>
-          <ChoiceBoxList />
-        </Center>
-        <ReadySlot>
-          <IsReady status="success" />
-        </ReadySlot>
-      </Page>
-    );
-  } catch {
-    return <NotFoundPage />;
-  }
+  return (
+    <Page>
+      <HeaderSlot>
+        <Header />
+      </HeaderSlot>
+      <Center>
+        <Title>통역을 시작할 방법을 선택해 주세요</Title>
+        <ChoiceBoxList />
+      </Center>
+      <ReadySlot>
+        <IsReady status="success" />
+      </ReadySlot>
+    </Page>
+  );
 }
 
 const Page = styled.main`
