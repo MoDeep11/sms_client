@@ -40,7 +40,7 @@ export function parseServerResponse(value: unknown): ServerResponse {
     const details = error.details === undefined ? undefined : object(error.details)
     let missingSequences: number[] | undefined
     if (details?.missingSequences !== undefined) {
-      if (!Array.isArray(details.missingSequences) || details.missingSequences.length > 20) throw new Error('누락 묶음 목록이 올바르지 않습니다.')
+      if (!Array.isArray(details.missingSequences)) throw new Error('누락 묶음 목록이 올바르지 않습니다.')
       missingSequences = details.missingSequences.map((sequence) => integer(sequence))
     }
     if (error.retryable !== undefined && typeof error.retryable !== 'boolean') throw new Error('재시도 응답이 올바르지 않습니다.')

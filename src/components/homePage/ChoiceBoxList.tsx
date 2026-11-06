@@ -21,10 +21,15 @@ export default function ChoiceBoxList() {
 const Wrapper = styled.div`
   display: flex;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0 16px;
   justify-content: center;
   align-items: center;
   gap: 48px;
 `;
 
-const BoxWrapper = styled.div``;
+const BoxWrapper = styled.div`
+  flex: 0 1 320px;
+  min-width: 0;
+`;

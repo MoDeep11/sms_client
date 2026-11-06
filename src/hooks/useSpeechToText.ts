@@ -89,7 +89,9 @@ export function useSpeechToText(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
 
-    const client = connectTranslation({
+    let client: Client;
+    try {
+      client = connectTranslation({
       mode: "SPEECH_TO_TEXT",
 
       onMessage: (response) => {
@@ -146,6 +148,16 @@ export function useSpeechToText(enabled: boolean) {
         stopCapture();
       },
     });
+
+    } catch (error) {
+      let cancelled = false;
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setReady(false);
+        setErrorMessage(error instanceof Error ? error.message : "서버 연결 설정을 확인해 주세요.");
+      });
+      return () => { cancelled = true; };
+    }
 
     clientRef.current = client;
 

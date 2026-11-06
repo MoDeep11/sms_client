@@ -154,3 +154,11 @@ test('WebSocket failure rejects READY immediately and close prevents retries', a
   adapter.close()
   assert.equal(closed, true)
 })
+
+
+test('SEQUENCE_GAP accepts more than twenty validated sequence numbers', () => {
+  const missingSequences = Array.from({ length: 25 }, (_, i) => i + 1)
+  const response = parseServerResponse({ type: 'ERROR', success: false,
+    error: { code: 'SEQUENCE_GAP', message: 'gap', details: { missingSequences } } })
+  assert.deepEqual(response.error.details.missingSequences, missingSequences)
+})

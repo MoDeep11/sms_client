@@ -61,7 +61,7 @@ try {
   await page.getByRole('button', { name: '음성으로 말하기', exact: true }).click()
   await page.waitForURL('**mode=voice')
   assert.ok(await page.evaluate(() => window.__speechTest.cancels) > beforeSwitch)
-  assert.equal(await page.getByRole('button', { name: '음성 녹음 (준비 중)' }).isDisabled(), true)
+  await page.getByRole('button', { name: '말하기 시작', exact: true }).waitFor({ state: 'visible' })
   await page.goBack()
   await record()
   await page.getByRole('button', { name: '수어 녹화', exact: true }).click()

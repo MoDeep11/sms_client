@@ -31,7 +31,10 @@ const Wrapper = styled(Link)`
   text-decoration: none;
   display: flex;
   padding: 36px 0;
-  width: 320px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  img { max-width: 100%; }
   height: auto;
   justify-content: center;
   align-items: center;

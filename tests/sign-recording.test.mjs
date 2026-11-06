@@ -21,6 +21,7 @@ test('stop immediately flushes a short batch and emits one COMMIT, with fresh ID
   await Promise.all([session.stop(), session.stop()])
   assert.deepEqual(requests.map((request) => request.type), ['VIDEO_CHUNK', 'COMMIT'])
   assert.equal(requests[0].input.frames.length, 1)
+  assert.equal(requests[0].input.frames[0].contentBase64, jpeg)
   assert.equal(requests[0].input.frames[0].frameIndex, 1)
   assert.equal(requests[1].input.lastSequence, 1)
   assert.equal(requests[0].requestId, requests[1].requestId)
@@ -232,4 +233,38 @@ test('each local mock recording autoplays once after its own COMMIT, even with i
     session.dispose()
   }
   assert.deepEqual(spoken, ['같은 번역문', '같은 번역문'])
+})
+
+
+test('capture reduces JPEG quality to fit the negotiated frame budget', async () => {
+  const sent = []
+  const qualities = []
+  const session = new SignRecordingSession({ video, onProgress() {}, transport: {
+    connect: async () => ({ ...DEFAULT_SIGN_POLICY, maxMessageBytes: 4096 }),
+    send: async message => sent.push(message), close() {},
+  } })
+  session.canvas.toDataURL = (_, quality) => {
+    qualities.push(quality)
+    return 'data:image/jpeg;base64,' + (quality > 0.5 ? 'A'.repeat(5000) : jpeg)
+  }
+  await session.start()
+  await session.stop()
+  assert.deepEqual(qualities, [0.85, 0.7, 0.5])
+  assert.equal(sent[0].input.width, 640)
+  assert.equal(sent[0].input.frames[0].contentBase64, jpeg)
+  assert.ok(Buffer.byteLength(JSON.stringify(sent[0])) + 1024 <= 4096)
+  session.dispose()
+})
+
+test('capture rejects an image that cannot fit even at lowest quality', async () => {
+  const sent = []
+  const session = new SignRecordingSession({ video, onProgress() {}, transport: {
+    connect: async () => ({ ...DEFAULT_SIGN_POLICY, maxMessageBytes: 4096 }),
+    send: async message => sent.push(message), close() {},
+  } })
+  session.canvas.toDataURL = () => 'data:image/jpeg;base64,' + 'A'.repeat(5000)
+  await session.start()
+  assert.equal(session.phase, 'error')
+  assert.equal(sent.length, 0)
+  session.dispose()
 })

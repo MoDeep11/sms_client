@@ -1,4 +1,4 @@
-import { CAPTURE, RECORDING_LIMITS } from '../config/signRecording.ts'
+import { CAPTURE, RECORDING_LIMITS, TRANSPORT } from '../config/signRecording.ts'
 import { DEFAULT_SIGN_POLICY } from '../types/signTranslation.ts'
 import type { MediaPolicy, SignFrame, SignRequest, SignResult, SignTransport, VideoChunk } from '../types/signTranslation.ts'
 
@@ -137,12 +137,23 @@ export class SignRecordingSession {
       context.fillStyle = '#000'
       context.fillRect(0, 0, CAPTURE.width, CAPTURE.height)
       context.drawImage(video, (CAPTURE.width - width) / 2, (CAPTURE.height - height) / 2, width, height)
-      const dataUrl = this.canvas.toDataURL('image/jpeg', CAPTURE.jpegQuality)
-      if (!dataUrl.startsWith('data:image/jpeg;base64,')) throw new Error('JPEG 인코딩을 지원하지 않습니다.')
+      // Reserve room for STOMP, JSON metadata and per-frame timestamps/indexes.
+      const frameBudget = Math.floor((this.policy.maxMessageBytes - TRANSPORT.headerReserveBytes - 1024)
+        / this.policy.videoFramesPerChunk) - 128
+      let contentBase64 = ''
+      for (const quality of [CAPTURE.jpegQuality, 0.7, 0.5, 0.3, 0.1]) {
+        const dataUrl = this.canvas.toDataURL('image/jpeg', quality)
+        if (!dataUrl.startsWith('data:image/jpeg;base64,')) throw new Error('JPEG 인코딩을 지원하지 않습니다.')
+        contentBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+        if (contentBase64.length > 0 && contentBase64.length <= frameBudget) break
+      }
+      if (!contentBase64 || contentBase64.length > frameBudget) {
+        throw new Error('서버 메시지 제한에 맞는 JPEG를 만들 수 없습니다. 서버 전송 정책을 확인해 주세요.')
+      }
       this.frames.push({
         frameIndex: ++this.frameIndex,
         capturedAt: new Date().toISOString(),
-        contentBase64: dataUrl.slice(dataUrl.indexOf(',') + 1),
+        contentBase64,
       })
       if (this.frames.length >= this.policy.videoFramesPerChunk) this.flush()
       // Do not generate catch-up bursts when a slow device misses its capture deadline.
