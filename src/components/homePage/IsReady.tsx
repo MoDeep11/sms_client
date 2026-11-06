@@ -1,15 +1,15 @@
 import styled from "@emotion/styled";
 
 interface IsReadyProps {
-  status: "error" | "success";
+  status: "error" | "success" | "unchecked";
 }
 
 export default function IsReady({ status }: IsReadyProps) {
   return (
-    <Wrapper color={status == "error" ? "#E54D4D" : "#20AF61"}>
+    <Wrapper color={status === "unchecked" ? "#475569" : status === "error" ? "#E54D4D" : "#20AF61"}>
       <Dot />
       <Text>
-        {status == "error"
+        {status === "unchecked" ? "통역 화면에서 기기 연결을 확인해 주세요" : status === "error"
           ? "카메라·마이크 권한 필요"
           : "카메라·마이크 준비 완료"}
       </Text>

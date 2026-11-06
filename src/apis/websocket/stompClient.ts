@@ -1,85 +1,68 @@
-import { Client, Versions, type IMessage } from "@stomp/stompjs";
-import type { TranslationMode, TranslationResponse } from "./websocket.types";
+import type { TranslationMode, TranslationResponse } from './websocket.types'
+import { Client, Versions } from '@stomp/stompjs'
+import { TRANSPORT } from '../../config/signRecording.ts'
 
-const WS_BASE_URL = import.meta.env.VITE_TRANSLATION_WS_URL;
-
-interface ConnectTranslationOptions {
-  mode: TranslationMode;
-  onMessage: (response: TranslationResponse) => void;
-  onError?: (message: string) => void;
+type Options = {
+  url: string
+  mode: 'SIGN_TO_SPEECH' | 'SPEECH_TO_TEXT'
+  onConnect: () => void
+  onMessage: (value: unknown) => void
+  onError: (error: Error) => void
+  onClose: () => void
 }
 
-export function connectTranslation({
-  mode,
-  onMessage,
-  onError,
-}: ConnectTranslationOptions): Client {
-  if (!WS_BASE_URL) {
-    throw new Error("환경변수가 설정되지 않았습니다.");
-  }
-
-  const brokerURL = new URL(WS_BASE_URL);
-
-  brokerURL.searchParams.set("mode", mode);
-
-  let reported = false;
-  const report = (message: string) => {
-    if (reported) return;
-
-    reported = true;
-    onError?.(message);
-  };
-
+// Construction and activation are separate so callers can install READY waiters first.
+export function createTranslationClient(options: Options): Client {
+  const endpoint = new URL(options.url)
+  if (!['ws:', 'wss:'].includes(endpoint.protocol)) throw new Error('서버 주소는 ws:// 또는 wss://로 설정해 주세요.')
+  endpoint.searchParams.set('mode', options.mode)
   const client = new Client({
-    brokerURL: brokerURL.toString(),
-    stompVersions: new Versions([Versions.V1_2]),
-    connectionTimeout: 10000,
-    reconnectDelay: 5000,
+    brokerURL: endpoint.toString(),
+    stompVersions: new Versions(['1.2']),
+    reconnectDelay: TRANSPORT.reconnectDelayMs,
+    connectionTimeout: TRANSPORT.connectionTimeoutMs,
     splitLargeFrames: true,
-    maxWebSocketChunkSize: 16 * 1024,
-
+    maxWebSocketChunkSize: TRANSPORT.webSocketChunkBytes,
     onConnect: () => {
-      reported = false;
-
-      client.subscribe("/user/queue/translations", (message: IMessage) => {
-        try {
-          const response: TranslationResponse = JSON.parse(message.body);
-
-          onMessage(response);
-        } catch {
-          onError?.("서버 응답을 가져오지 못했습니다.");
-        }
-      });
-
-      client.publish({
-        destination: "/app/translations/ready",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: "{}",
-      });
+      options.onConnect()
+      client.subscribe('/user/queue/translations', message => {
+        try { options.onMessage(JSON.parse(message.body)) }
+        catch (error) { options.onError(error instanceof Error ? error : new Error('서버 응답을 읽을 수 없습니다.')) }
+      })
+      client.publish({ destination: '/app/translations/ready', headers: { 'content-type': 'application/json' }, body: '{}' })
     },
+    onStompError: frame => options.onError(new Error(frame.headers.message || 'STOMP 연결 오류가 발생했습니다.')),
+    onWebSocketError: () => options.onError(new Error('WebSocket 연결에 실패했습니다. 서버 주소, 터널 실행 상태와 허용 Origin을 확인해 주세요.')),
+    onWebSocketClose: () => { if (client.active) options.onClose() },
+  })
+  return client
+}
 
-    onStompError: (frame) => {
-      report(frame.headers["message"] ?? "STOMP 오류가 발생했습니다.");
-    },
-
-    onWebSocketError: () => {
-      report("WebSocket 연결 오류가 발생했습니다.");
-    },
-
-    onWebSocketClose: () => {
-      if (!client.active) return;
-
-      report("WebSocket 연결이 끊어졌습니다. 재연결을 시도합니다.");
-    },
-  });
-
-  client.activate();
-
-  return client;
+// Compatibility entry point for develop's speech-to-text hook.
+export function connectTranslation(options: {
+  mode: TranslationMode
+  onMessage: (response: TranslationResponse) => void
+  onError?: (message: string) => void
+}): Client {
+  const url = import.meta.env.VITE_TRANSLATION_WS_URL?.trim()
+  if (!url) throw new Error('환경변수가 설정되지 않았습니다.')
+  let reported = false
+  const report = (message: string) => {
+    if (reported) return
+    reported = true
+    options.onError?.(message)
+  }
+  const client = createTranslationClient({
+    url, mode: options.mode,
+    onConnect: () => { reported = false },
+    onMessage: value => options.onMessage(value as TranslationResponse),
+    onError: error => report(error.message),
+    onClose: () => report('WebSocket 연결이 끊어졌습니다. 재연결을 시도합니다.'),
+  })
+  client.activate()
+  return client
 }
 
 export async function disconnectTranslation(client: Client): Promise<void> {
-  await client.deactivate();
+  await client.deactivate()
 }

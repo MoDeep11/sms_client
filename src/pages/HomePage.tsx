@@ -14,7 +14,7 @@ export default function HomePage() {
         <ChoiceBoxList />
       </Center>
       <ReadySlot>
-        <IsReady status="success" />
+        <IsReady status="unchecked" />
       </ReadySlot>
     </Page>
   );

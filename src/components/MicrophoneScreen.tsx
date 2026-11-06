@@ -166,7 +166,7 @@ export default function MicrophoneScreen({ onStatusChange }: MicrophoneScreenPro
         </svg>
       </VoiceVisual>
       <Guidance>{status === 'ready'
-        ? '듣고 있어요! 기기에 대고 말씀하시면 텍스트로 바꿔드릴게요.'
+        ? '마이크가 연결됐어요. 말하기 시작 버튼을 눌러 주세요.'
         : '음성으로 말하기를 위해 마이크 연결을 확인해 주세요.'}</Guidance>
       <ConnectionStatus role="status" aria-live="polite">{status === 'ready' ? '' : message}</ConnectionStatus>
       {needsResume && status !== 'error' && (
