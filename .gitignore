@@ -8,3 +8,5 @@ dist/
 *.tsbuildinfo
 .DS_Store
 .idea/
+src/assets/test/*
+!src/assets/test/.gitkeep

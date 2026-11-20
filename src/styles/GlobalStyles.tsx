@@ -9,6 +9,7 @@ export default function GlobalStyles() {
         *, *::before, *::after { box-sizing: border-box; }
         body {
           margin: 0;
+          padding: 0;
           min-width: 320px;
           background: ${theme.colors.background};
           color: ${theme.colors.text};
